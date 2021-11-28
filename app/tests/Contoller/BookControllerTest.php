@@ -19,10 +19,18 @@ final class BookControllerTest extends TestCase {
             ->willReturn(null);
 
         $bookController = new BookController();
+        $bookController->setJsonResponseMethod(
+            function($data, int $status = 200, array $headers = [], array $context = []) {
+                return new JsonResponse($data, $status, $headers);
+            }
+        );
 
         $response = $bookController->search($stubRequest);
 
-        $this->assertEquals('Не указана строка поиска', $response->getContent());
+        $this->assertJsonStringEqualsJsonString(
+            (new JsonResponse(['error' => 'Не указана строка поиска']))->getContent(),
+            $response->getContent()
+        );
     }
 
     public function testSearchBookQueryGetNoBookError() {
@@ -40,10 +48,18 @@ final class BookControllerTest extends TestCase {
 
         $bookController = new BookController();
         $bookController->setBookRepository($stubRepository);
+        $bookController->setJsonResponseMethod(
+            function($data, int $status = 200, array $headers = [], array $context = []) {
+                return new JsonResponse($data, $status, $headers);
+            }
+        );
 
         $response = $bookController->search($stubRequest);
 
-        $this->assertEquals('Книги не найдены', $response->getContent());
+        $this->assertJsonStringEqualsJsonString(
+            (new JsonResponse(['error' => 'Книги не найдены']))->getContent(),
+            $response->getContent()
+        );
     }
 
     public function testSearchBookQueryGetJsonAnswer() {

@@ -52,7 +52,7 @@ class BookRepository extends ServiceEntityRepository
      * @param $query
      * @return Book[] Returns an array of Book objects
      */
-    public function search($query): array {
+    public function search($query, $page = 1, $offset = 100): array {
         $qb = $this->createQueryBuilder('b');
 
         $result = $qb->select('b')
@@ -63,6 +63,8 @@ class BookRepository extends ServiceEntityRepository
         )
         ->setParameter('query', '%' . mb_strtolower($query) . '%')
         ->getQuery()
+        ->setFirstResult($offset * ($page - 1) + 1)
+        ->setMaxResults($offset)
         ->getResult();
 
         return $result;

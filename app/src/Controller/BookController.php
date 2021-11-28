@@ -4,20 +4,12 @@ namespace App\Controller;
 
 use App\Entity\Author;
 use App\Entity\Book;
-use App\Repository\BookRepository;
-use Doctrine\Common\Annotations\AnnotationReader;
 use Doctrine\Persistence\ObjectRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
-//use Symfony\Component\Serializer\Encoder\JsonEncoder;
-//use Symfony\Component\Serializer\Mapping\Factory\ClassMetadataFactory;
-//use Symfony\Component\Serializer\Mapping\Loader\AnnotationLoader;
-//use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
-//use Symfony\Component\Serializer\Normalizer\ObjectNormalizer;
-//use Symfony\Component\Serializer\Serializer;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 class BookController extends AbstractController
 {
@@ -39,6 +31,26 @@ class BookController extends AbstractController
     }
 
     /**
+     * @Route("{_locale}/book/{id}", name="book_by_id")
+     * @param Request $request
+     * @param TranslatorInterface $translator
+     * @return Response
+     */
+    public function book(Request $request, TranslatorInterface $translator): Response {
+        $bookRepository = $this->getBookRepository();
+
+        $book = $bookRepository->find($request->get('id'));
+        if (!$book) {
+            return $this->json(['error' => 'Книги с указанным идентификатором не найдено'], 400);
+        }
+
+        $bookName = explode('|', $book->getName());
+
+        $book->setName($translator->trans($bookName[0]) . '|' . $bookName[1]);
+        return $this->json($book, 200, [], ['groups' => 'book']);
+    }
+
+    /**
      * @Route("/book/create", name="book_create", methods={"POST"})
      * @param $request
      * @return Response
@@ -53,11 +65,11 @@ class BookController extends AbstractController
         /** @var Author $author */
         $author = null;
         if (!isset($authorId)) {
-            return new Response('Не указано id автора', 400);
+            return $this->json(['error' => 'Не указано id автора'], 400);
         } else {
             $author = $entityManager->getRepository(Author::class)->find($authorId);
             if (!isset($author)) {
-                return new Response('Указанный автор не найден', 400);
+                return $this->json(['error' => 'Указанный автор не найден'], 400);
             }
         }
 
@@ -66,9 +78,9 @@ class BookController extends AbstractController
             $book->setAuthor($author);
             $entityManager->persist($book);
             $entityManager->flush();
-            return new Response('Сохранена новая книга с id '.$book->getId());
+            return $this->json(['success' => 'Сохранена новая книга с id '.$book->getId()]);
         } else {
-            return new Response('Не указано название книги', 400);
+            return $this->json(['error' => 'Не указано название книги'], 400);
         }
     }
 
@@ -81,29 +93,11 @@ class BookController extends AbstractController
         $entityManager = $this->getDoctrine()->getManager();
         $books = $entityManager->getRepository(Book::class)->findAll();
 
-//        $defaultContext = [
-//            AbstractNormalizer::CIRCULAR_REFERENCE_HANDLER => function ($object, $format, $context) {
-//                /** @var Author $object */
-//                return ['id' => $object->getId(), 'name' => $object->getName()];
-//            },
-//        ];
-//
-//        try {
-//            $classMetadataFactory = new ClassMetadataFactory(new AnnotationLoader(new AnnotationReader()));
-//            $encoders = [new JsonEncoder()];
-//            $normalizers = [new ObjectNormalizer($classMetadataFactory, null, null, null, null, null, $defaultContext)];
-//
-//            $serializer = new Serializer($normalizers, $encoders);
-//            $jsonBooks = $serializer->serialize($books, 'json', ['groups' => 'book']);
-//        } catch (\Exception $e) {
-//            return new Response('Ошибка сериализации данных о книгах: ' . $e->getMessage(), 400);
-//        }
 
         if (count($books)) {
-//            return new Response($jsonBooks);
             return $this->json($books, 200, [], ['groups' => 'book']);
         } else {
-            return new Response('Книги не найдены', 400);
+            return $this->json(['error' => 'Книги не найдены'], 400);
         }
     }
 
@@ -117,16 +111,19 @@ class BookController extends AbstractController
         $query = $request->get('query');
 
         if (!isset($query)) {
-            return new Response('Не указана строка поиска', 400);
+            return $this->getJsonResponse(['error' => 'Не указана строка поиска'], 400);
         }
 
+        $page = $request->get('page', 1);
+        $offset = $request->get('offset', 100);
+
         $bookRepository = $this->getBookRepository();
-        $books = $bookRepository->search($query);
+        $books = $bookRepository->search($query, $page, $offset);
 
         if (isset($books) && count($books)) {
             return $this->getJsonResponse($books, 200, [], ['groups' => 'book']);
         } else {
-            return new Response('Книги не найдены', 400);
+            return $this->getJsonResponse(['error' => 'Книги не найдены'], 400);
         }
     }
 
