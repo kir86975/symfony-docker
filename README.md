@@ -15,8 +15,8 @@ php bin/console doctrine:database:create
 
 php bin/console doctrine:migrations:migrate
 
-#Задание
-#  Тестовое задание для middle/senior PHP/Symfony разработчика
+# Задание
+##  Тестовое задание для middle/senior PHP/Symfony разработчика
 
 Используя PHP 7 и фреймворк Symfony 5 (последние версии PHP 7.4 и Symfony 5.2), а также Doctrine ORM и с использованием Docker контейнера, написать REST API для создания и получения книг и авторов из базы данных в формате JSON. 
 
